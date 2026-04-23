@@ -6,7 +6,7 @@ response = client.chat.completions.create(
     model="gpt-4o", 
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Tell me a short, funny joke about programmers."} 
+        {"role": "user", "content": "Tell me a DIFFERENT joke about programmers. Don't mention light or bugs."} 
     ],
 
     store=False, 
