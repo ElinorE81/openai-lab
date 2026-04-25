@@ -1,17 +1,36 @@
-name: Deploy to EKS Cluster
+name: Build and Deploy to EKS
 
 on:
   push:
     branches:
       - main
 
+# הרשאות מיוחדות כדי שגיטהאב יוכל לשמור את תמונת הדוקר
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  deploy-to-kubernetes:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/elinore81/openai-lab:latest
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -23,5 +42,14 @@ jobs:
       - name: Connect to EKS Cluster
         run: aws eks update-kubeconfig --region us-west-2 --name my-learn-eks
 
-      - name: Test Connection (Get Nodes)
-        run: kubectl get nodes
+      - name: Create and Apply K8s Secret (OpenAI Key)
+        run: |
+          kubectl create secret generic openai-secret \
+            --from-literal=OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --dry-run=client -o yaml > secret-file.yaml
+          kubectl apply -f secret-file.yaml
+
+      - name: Deploy App to EKS
+        run: |
+          kubectl apply -f openai-deployment.yaml
+          kubectl rollout restart deployment openai-flask-app
