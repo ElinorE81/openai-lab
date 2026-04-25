@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openai-flask-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: openai-flask
+  template:
+    metadata:
+      labels:
+        app: openai-flask
+    spec:
+      containers:
+      - name: flask-container
+        image: ghcr.io/elinore81/openai-lab:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openai-secret
+              key: OPENAI_API_KEY
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openai-flask-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: openai-flask
+  ports:
+    - port: 80
+      targetPort: 5000
